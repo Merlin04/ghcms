@@ -1,6 +1,6 @@
 {
-  "name": "ghcms",
-  "version": "0.1.0",
+  "name": "@merlin04/ghcms",
+  "version": "0.1.1",
   "license": "MIT",
   "author": "Merlin04",
   "main": "dist/index.js",
@@ -52,6 +52,7 @@
     "@tsconfig/recommended": "^1.0.2",
     "husky": "^8.0.3",
     "rollup": "^3.21.7",
+    "rollup-plugin-add-shebang": "^0.3.1",
     "rollup-plugin-string": "^3.0.0",
     "size-limit": "^8.2.4",
     "tslib": "^2.5.0",
