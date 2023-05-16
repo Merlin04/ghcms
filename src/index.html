@@ -7,28 +7,32 @@
     <title>ghcms</title>
     <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
     <style>
-        /* make the first two columns of the table small */
+        body {
+            max-width: 1200px;
+        }
         table {
             table-layout: fixed;
         }
         td p {
             margin-top: 0;
         }
-        td:nth-child(1), td:nth-child(2), th:nth-child(1), th:nth-child(2) {
+        th:nth-child(1), th.t-checkbox {
             width: 1em;
         }
-        td:nth-child(3), th:nth-child(3) {
-            width: 30%;
+        #h-repo, th.t-text {
+            width: 15em;
         }
+
         /* make the drag point look like a drag point */
         .drag {
             cursor: move;
             user-select: none;
         }
-        .desc {
+        textarea, input:not([type=submit]) {
             border: 1px solid rgb(200, 200, 200);
             font-size: 1rem;
             width: 100%;
+            box-sizing: border-box;
         }
         .orig-c {
             font-size: 0.9rem;
@@ -44,18 +48,15 @@
     <button id="save">save</button>
     <button id="generate">generate</button>
     <table>
-        <thead>
+        <thead id="h">
             <tr>
                 <th>
                     &equiv;
                 </th>
-                <th>
-                    ?
-                </th>
-                <th>
+                <th id="h-repo">
                     repo
                 </th>
-                <th>
+                <th class="t-desc">
                     desc
                 </th>
             </tr>
@@ -68,18 +69,16 @@
             <td class="drag">
                 ≡
             </td>
-            <td>
-                <input class="enabled" type="checkbox">
-            </td>
-            <td>
+            <td class="r-repo name">
                 <a class="repo"></a>
+                <input type="text">
             </td>
-            <td>
+            <td class="t-desc description">
                 <p class="orig-c">
                     <em>Orig: </em>
                     <span class="orig"></span>
                 </p>
-                <textarea class="desc" type="text" rows="3"></textarea>
+                <textarea type="text" rows="3"></textarea>
             </td>
         </tr>
     </template>
@@ -87,12 +86,62 @@
     <script type="application/json" id="data">
         {DATA}
     </script>
+    <script type="application/json" id="custom-fields">
+        {CUSTOM_FIELDS}
+    </script>
     <script type="module">
         const data = JSON.parse(document.getElementById("data").innerHTML);
-        console.log(data);
+        const customFields = JSON.parse(document.getElementById("custom-fields").innerHTML);
+        const allFields = [
+            ...customFields,
+            {
+                key: "description",
+                type: "textarea"
+            },
+            {
+                key: "name",
+                type: "input"
+            }
+        ];
         
         const body = document.getElementById("b");
         const rowTemplate = document.getElementById("row");
+
+        // init custom fields
+        const head = document.getElementById("h");
+        const hRepo = document.getElementById("h-repo");
+        const rRepo = rowTemplate.content.querySelector(".r-repo");
+        customFields.forEach((f) => {
+            const th = document.createElement("th");
+            th.innerText = f.displayName;
+            th.className = "t-" + f.type;
+            head.children[0].insertBefore(th, hRepo);
+
+            // table row
+            const td = document.createElement("td");
+            td.className = `t-${f.type} ${f.key}`;
+            switch(f.type) {
+                case "text": {
+                    const input = document.createElement("input");
+                    input.type = "text";
+                    td.appendChild(input);
+                    break;
+                }
+                case "textarea": {
+                    const textarea = document.createElement("textarea");
+                    textarea.rows = 3;
+                    td.appendChild(textarea);
+                    break;
+                }
+                case "checkbox": {
+                    const checkbox = document.createElement("input");
+                    checkbox.type = "checkbox";
+                    td.appendChild(checkbox);
+                    break;
+                }
+            }
+            rowTemplate.content.querySelector("tr").insertBefore(td, rRepo);
+        });
 
         const save = async () => {
             const rows = Array.from(body.children);
@@ -101,9 +150,13 @@
                 if(!row) console.error("couldn't find row for repo", r);
                 return {
                     ...r,
-                    include: row.querySelector(".enabled").checked,
-                    description: row.querySelector(".desc").value,
-                    order: rows.indexOf(row)
+                    order: rows.indexOf(row),
+                    ...(Object.fromEntries(
+                        allFields.map(f => ([
+                            f.key,
+                            row.querySelector(`.${f.key} ${f.type === "checkbox" ? "input" : f.type}`)[f.type === "checkbox" ? "checked" : "value"]
+                        ]))
+                    ))
                 };
             });
 
@@ -176,7 +229,6 @@
                     const thisIndex = rows.indexOf(thisRow);
                     const mouseY = e.clientY;
                     const toInsertBefore = rows
-                        // .filter(r => r !== thisRow)
                         .map((v, i) => [v, v.getBoundingClientRect().top - mouseY])
                         .sort((a, b) => Math.abs(a[1]) - Math.abs(b[1]))[0][0];
                     
@@ -189,6 +241,9 @@
                     document.removeEventListener("mousemove", mousemove);
                     document.removeEventListener("mouseup", mouseup);
                     window.removeEventListener("scroll", scroll);
+
+                    // save
+                    save();
                 };
 
                 document.addEventListener("mousemove", mousemove);
@@ -196,28 +251,32 @@
                 window.addEventListener("scroll", scroll);
             });
 
-            // set enabled
-            const enabled = row.querySelector(".enabled");
-            enabled.checked = e.include;
-            enabled.addEventListener("change", e => {
-                save();
+            row.querySelectorAll("input, textarea").forEach(e => {
+                if(e.type === "checkbox") {
+                    e.addEventListener("change", e => {
+                        save();
+                    });
+                } else {
+                    e.addEventListener("blur", e => {
+                        save();
+                    });
+                }
+            });
+
+            allFields.forEach(f => {
+                const td = row.querySelector(`.${f.key}`);
+                const input = td.querySelector("input, textarea");
+                if(f.type === "checkbox") {
+                    input.checked = e[f.key];
+                } else {
+                    input.value = e[f.key];
+                }
             });
 
             // set repo
             const a = row.querySelector(".repo");
             a.innerText = e.repo;
             a.href = `https://github.com/${e.repo}`;
-
-            // set orig
-            const orig = row.querySelector(".orig");
-            orig.innerText = e.orig;
-
-            // set desc
-            const desc = row.querySelector(".desc");
-            desc.innerText = e.description;
-            desc.addEventListener("blur", e => {
-                save();
-            });
 
             // append row
             body.appendChild(row);
