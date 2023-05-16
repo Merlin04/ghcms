@@ -1,7 +1,7 @@
 import path from "path";
 import fs from "fs/promises";
 import fsOld from "fs";
-import { SaveFile } from "./save";
+import { SaveFilePublic } from "./save";
 
 const configPath = process.env.GHCMS_CONFIG ?? "./ghcms.config.mjs";
 
@@ -42,7 +42,7 @@ type CustomFieldInternal = Omit<CustomField, "default" | "key"> & {
     default: string | boolean,
     key: `c_${string}`
 };
-export type ConfigFn = (save: SaveFile) => string | Promise<string>;
+export type ConfigFn = (save: SaveFilePublic) => string | Promise<string>;
 export type ConfigObj = {
     users: string[],
     saveFile: string,

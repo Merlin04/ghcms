@@ -2,7 +2,7 @@ import index from "./index.html";
 import { Octokit } from "@octokit/rest";
 import { writeFile } from "fs/promises";
 import config from "./config";
-import save, { type SaveFile } from "./save";
+import save, { SaveFilePublic, type SaveFile } from "./save";
 import serve, { ContentType, content, body } from "./web";
 
 export type { ConfigObj, ConfigFn } from "./config";
@@ -110,7 +110,7 @@ serve([
             // generate the file
             const v = await config.default(
                 Array.from({ length: save.value.length }, (_, i) => {
-                    let r: any = save.value.find((v) => v.order === i);
+                    let r: SaveFile[number] | undefined = save.value.find((v) => v.order === i);
                     if (!r)
                         throw new Error(
                             "Invalid order in save file! This should never happen."
@@ -118,10 +118,11 @@ serve([
                     // replace custom field keys c_key with key
                     r = { ...r };
                     for (const f of config.customFields) {
+                        //@ts-expect-error
                         r[f.key.slice(2)] = r[f.key];
                         delete r[f.key];
                     }
-                    return r;
+                    return r as SaveFilePublic[number];
                 })
             );
             await writeFile(config.output, v);

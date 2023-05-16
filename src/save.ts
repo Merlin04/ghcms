@@ -32,7 +32,17 @@ export type SaveFile = {
   description: string, // user-editable description
   // system fields
   order: number, // order in the list
-  // custom fields ?
-//   include: boolean, // field used by generator
-  [key: `c_${string}`]: any // custom fields
+  // custom fields
+  [key: `c_${string}`]: string | boolean
 }[];
+
+// copied for better intellisense in config file
+export type SaveFilePublic = ({
+    // GH fields
+    repo: string, // repo full name
+    name: string, // user-editable name (defaults to repo name)
+    summary: string // original repository summary
+    description: string, // user-editable description
+    // system fields
+    order: number, // order in the list  
+} & Record<string, string | boolean>)[];
