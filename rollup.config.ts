@@ -30,7 +30,7 @@ export default [{
         nodeResolve(),
         commonjs(),
         shebang({
-            include: "**/*.js"
+            include: "**/*.mjs"
         }),
         dev && run(),
         !dev && terser()
