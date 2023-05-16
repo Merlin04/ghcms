@@ -1,6 +1,6 @@
 {
   "name": "@merlin04/ghcms",
-  "version": "0.2.2",
+  "version": "0.2.3",
   "license": "MIT",
   "author": "Merlin04",
   "main": "dist/index.mjs",
