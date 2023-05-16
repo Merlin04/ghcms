@@ -1,6 +1,6 @@
 {
   "name": "@merlin04/ghcms",
-  "version": "0.2.0",
+  "version": "0.2.1",
   "license": "MIT",
   "author": "Merlin04",
   "main": "dist/index.mjs",
@@ -15,7 +15,7 @@
     "dev": "ROLLUP_WATCH=true rollup -c rollup.config.ts --configPlugin @rollup/plugin-typescript --watch"
   },
   "bin": {
-    "ghcms": "dist/index.js"
+    "ghcms": "dist/index.mjs"
   },
   "prettier": {
     "printWidth": 80,
