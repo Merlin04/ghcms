@@ -3,3 +3,7 @@
 node_modules
 dist
 ghcms.json
+*.ignore
+ghcms.mdx
+ghcms.mjs
+.env

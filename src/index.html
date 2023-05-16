@@ -4,9 +4,238 @@
     <meta charset="UTF-8">
     <meta http-equiv="X-UA-Compatible" content="IE=edge">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>yeag</title>
+    <title>ghcms</title>
+    <link rel="stylesheet" href="https://cdn.jsdelivr.net/npm/water.css@2/out/water.css">
+    <style>
+        /* make the first two columns of the table small */
+        table {
+            table-layout: fixed;
+        }
+        td p {
+            margin-top: 0;
+        }
+        td:nth-child(1), td:nth-child(2), th:nth-child(1), th:nth-child(2) {
+            width: 1em;
+        }
+        td:nth-child(3), th:nth-child(3) {
+            width: 30%;
+        }
+        /* make the drag point look like a drag point */
+        .drag {
+            cursor: move;
+            user-select: none;
+        }
+        .desc {
+            border: 1px solid rgb(200, 200, 200);
+            font-size: 1rem;
+            width: 100%;
+        }
+        .orig-c {
+            font-size: 0.9rem;
+            color: rgba(255, 255, 255, 0.8);
+        }
+    </style>
 </head>
 <body>
-    why do I do this
+    <h1>ghcms</h1>
+    <form action="/api/refreshgh" method="POST">
+        <input type="submit" value="refreshgh">
+    </form>
+    <button id="save">save</button>
+    <button id="generate">generate</button>
+    <table>
+        <thead>
+            <tr>
+                <th>
+                    &equiv;
+                </th>
+                <th>
+                    ?
+                </th>
+                <th>
+                    repo
+                </th>
+                <th>
+                    desc
+                </th>
+            </tr>
+        </thead>
+        <tbody id="b">
+        </tbody>
+    </table>
+    <template id="row">
+        <tr>
+            <td class="drag">
+                ≡
+            </td>
+            <td>
+                <input class="enabled" type="checkbox">
+            </td>
+            <td>
+                <a class="repo"></a>
+            </td>
+            <td>
+                <p class="orig-c">
+                    <em>Orig: </em>
+                    <span class="orig"></span>
+                </p>
+                <textarea class="desc" type="text" rows="3"></textarea>
+            </td>
+        </tr>
+    </template>
+    <!-- data -->
+    <script type="application/json" id="data">
+        {DATA}
+    </script>
+    <script type="module">
+        const data = JSON.parse(document.getElementById("data").innerHTML);
+        console.log(data);
+        
+        const body = document.getElementById("b");
+        const rowTemplate = document.getElementById("row");
+
+        const save = async () => {
+            const rows = Array.from(body.children);
+            const newData = data.map(r => {
+                const row = rows.find(v => v.querySelector(".repo").innerText === r.repo);
+                if(!row) console.error("couldn't find row for repo", r);
+                return {
+                    ...r,
+                    include: row.querySelector(".enabled").checked,
+                    description: row.querySelector(".desc").value,
+                    order: rows.indexOf(row)
+                };
+            });
+
+            const r = await fetch("/api/update", {
+                method: "POST",
+                headers: {
+                    "Content-Type": "application/json"
+                },
+                body: JSON.stringify(newData)
+            }).then(r => r.text());
+
+            if(r !== "OK") throw new Error("update response not ok");
+        };
+
+        const generate = async () => {
+            await save();
+            const r = await fetch("/api/generate").then(r => r.text());
+            if(r === "OK") alert("done!"); else alert("no");
+        }
+
+        const createRows = (data) => (body.innerHTML = "", Array.from({ length: data.length }, (_, i) => data.find(v => v.order === i)).forEach(e => {
+            // create row from template
+            const row = rowTemplate.content.cloneNode(true);
+            // row.dataset.repo = e.repo;
+            // configure drag point
+            const drag = row.querySelector(".drag");
+            let isDragging = false;
+            drag.addEventListener("mousedown", e => {
+                const thisRow = e.target.parentElement;
+                // we can set the position to relative and make the element follow the mouse
+                // and when we release, figure out what row the element is closest to and insert it there
+
+                thisRow.style.position = "relative";
+                // the offset should be the top of the element right now, minus the position of the mouse relative to the top
+                // const offset = thisRow.getBoundingClientRect().top + (e.clientY - thisRow.getBoundingClientRect().top);
+                let offset = e.clientY;
+                thisRow.style.top = `${e.clientY - offset}px`;
+                isDragging = true;
+
+                const mousemove = e => {
+                    if (!isDragging) return;
+                    thisRow.style.top = `${e.clientY - offset}px`;
+
+                    // we also have to make it so when the mouse reaches the top or bottom of the screen, we scroll
+
+                    if(e.clientY < 50) {
+                        // scroll up
+                        window.scrollBy(0, -10);
+                    } else if(e.clientY > window.innerHeight - 50) {
+                        // scroll down
+                        window.scrollBy(0, 10);
+                    }
+                };
+
+                // window scroll listener (deltaY doesn't work here)
+                let lastScrollPos = window.scrollY;
+                const scroll = e => {
+                    // update offset
+                    offset -= window.scrollY - lastScrollPos;
+                    lastScrollPos = window.scrollY;
+                };
+
+                const mouseup = e => {
+                    isDragging = false;
+
+                    // figure out where to put the row
+                    // we'll do this based on the mouse position
+                    // we'll find the element to insert the row before, this is done by finding the row whose top is closest to the mouse y
+                    const rows = Array.from(body.children);
+                    const thisIndex = rows.indexOf(thisRow);
+                    const mouseY = e.clientY;
+                    const toInsertBefore = rows
+                        // .filter(r => r !== thisRow)
+                        .map((v, i) => [v, v.getBoundingClientRect().top - mouseY])
+                        .sort((a, b) => Math.abs(a[1]) - Math.abs(b[1]))[0][0];
+                    
+                    body.insertBefore(thisRow, toInsertBefore);
+
+                    // reset styles
+                    
+                    thisRow.style.position = "static";
+                    thisRow.style.top = "0px";
+                    document.removeEventListener("mousemove", mousemove);
+                    document.removeEventListener("mouseup", mouseup);
+                    window.removeEventListener("scroll", scroll);
+                };
+
+                document.addEventListener("mousemove", mousemove);
+                document.addEventListener("mouseup", mouseup);
+                window.addEventListener("scroll", scroll);
+            });
+
+            // set enabled
+            const enabled = row.querySelector(".enabled");
+            enabled.checked = e.include;
+            enabled.addEventListener("change", e => {
+                save();
+            });
+
+            // set repo
+            const a = row.querySelector(".repo");
+            a.innerText = e.repo;
+            a.href = `https://github.com/${e.repo}`;
+
+            // set orig
+            const orig = row.querySelector(".orig");
+            orig.innerText = e.orig;
+
+            // set desc
+            const desc = row.querySelector(".desc");
+            desc.innerText = e.description;
+            desc.addEventListener("blur", e => {
+                save();
+            });
+
+            // append row
+            body.appendChild(row);
+        }));
+
+        createRows(data);
+
+        // save button
+        const saveBtn = document.getElementById("save");
+        saveBtn.addEventListener("click", e => {
+            save();
+        });
+
+        // generate button
+        const generateBtn = document.getElementById("generate");
+        generateBtn.addEventListener("click", e => {
+            generate();
+        });
+    </script>
 </body>
 </html>
