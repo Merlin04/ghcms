@@ -5,6 +5,7 @@ import { nodeResolve } from "@rollup/plugin-node-resolve";
 import commonjs from "@rollup/plugin-commonjs";
 import json from "@rollup/plugin-json";
 import terser from "@rollup/plugin-terser";
+import shebang from "rollup-plugin-add-shebang";
 
 const dev = process.env.ROLLUP_WATCH === "true";
 
@@ -25,6 +26,9 @@ export default {
         json(),
         nodeResolve(),
         commonjs(),
+        shebang({
+            include: "**/*.js"
+        }),
         dev && run(),
         !dev && terser()
     ]
