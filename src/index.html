@@ -278,6 +278,10 @@
             a.innerText = e.repo;
             a.href = `https://github.com/${e.repo}`;
 
+            // set orig
+            const orig = row.querySelector(".orig");
+            orig.innerText = e.summary;
+
             // append row
             body.appendChild(row);
         }));
