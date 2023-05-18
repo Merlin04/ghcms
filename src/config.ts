@@ -11,6 +11,7 @@ const INITIAL_CONFIG = `/**
 export const config = {
     users: ["Merlin04"],
     saveFile: "./ghcms.json",
+    deltasFile: "./ghcms.deltas",
     output: "./ghcms.md",
     customFields: [{
         key: "include",
@@ -46,6 +47,7 @@ export type ConfigFn = (save: SaveFilePublic) => string | Promise<string>;
 export type ConfigObj = {
     users: string[],
     saveFile: string,
+    deltasFile: string,
     output: string,
     customFields: CustomField[]
 };
@@ -67,6 +69,9 @@ const validateModule = (m: ConfigModule) => {
         }
         if(!m.config.saveFile || typeof m.config.saveFile !== "string") {
             throw new Error("The exported config object must contain a `saveFile` file path string");
+        }
+        if(!m.config.deltasFile || typeof m.config.deltasFile !== "string") {
+            throw new Error("The exported config object must contain a `deltasFile` file path string");
         }
         if(!m.config.output || typeof m.config.output !== "string") {
             throw new Error("The exported config object must contain an `output` file path string");
@@ -98,6 +103,9 @@ export default {
     },
     get saveFile() {
         return m.config.saveFile;
+    },
+    get deltasFile() {
+        return m.config.deltasFile;
     },
     get output() {
         return m.config.output;
