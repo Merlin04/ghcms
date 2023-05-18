@@ -61,6 +61,6 @@ export default async function serve(routes: Route[]) {
             }
         }
     }
-    console.log(`Server listening on port ${port}`);
-    console.log(`💡 reminder! ghcms stores revision history - run \`ghcms history\` for more`);
+
+    return port;
 }

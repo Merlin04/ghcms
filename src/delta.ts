@@ -3,6 +3,7 @@ import fsOld from "fs";
 import fs from "fs/promises";
 import config from "./config";
 import readline from "readline";
+import { saveObjectToString, stringToSaveObject } from "./saveFmt";
 
 const xdelta = new XdeltaAlgorithm();
 // we're using our own binary delta storage format
@@ -200,10 +201,16 @@ export const revertToChunk = async (f: DeltasFile, n: number) => {
     await saveDeltasFile();
 };
 
-export const runCli = async () => {
-    // simple CLI to allow viewing and reverting to chunks
+const getPrompt = () => {
     const rl = readline.createInterface({ input: process.stdin, output: process.stdout });
     const prompt = (query: string) => new Promise<string>((resolve) => rl.question(query, resolve));
+
+    return { rl, prompt };
+};
+
+export const runCli = async () => {
+    // simple CLI to allow viewing and reverting to chunks
+    const { rl, prompt } = getPrompt();
 
     let f = getDeltas();
 
@@ -249,4 +256,46 @@ export const runCli = async () => {
                 }
         }
     }
+};
+
+export const checkIfEditing = async () => {
+    if(!fsOld.existsSync(config.saveFile + ".orig")) return;
+    throw new Error("Manual edit to save file is in progress. Please finish your edit with `ghcms edit commit` or exit without saving with `ghcms edit undo`.")
+}
+
+export const runEdit = async () => {
+    const { rl, prompt } = getPrompt();
+    // get sub-command - either "start" or "commit"
+    const subcommand = process.argv[3];
+
+    const subcommands = {
+        start: async () => {
+            await fs.copyFile(config.saveFile, config.saveFile + ".orig");
+            await fs.writeFile(config.saveFile, JSON.stringify(stringToSaveObject(await fs.readFile(config.saveFile, "utf8")), null, 4));
+        },
+        commit: async () => {
+            const newSaveString = saveObjectToString(JSON.parse(await fs.readFile(config.saveFile, "utf8")));
+            await fs.writeFile(config.saveFile, newSaveString);
+            const oldSaveString = await fs.readFile(config.saveFile + ".orig", "utf8");
+            await appendDelta(oldSaveString, newSaveString);
+            await fs.unlink(config.saveFile + ".orig");
+        },
+        undo: async () => {
+            // confirm
+            if(await prompt("undoing your manual edits to the save file cannot be undone, and you will lose all changes since you ran `ghcms edit start`. Type 'yes' to confirm: ") !== "yes") {
+                console.log("aborting");
+                return;
+            }
+            await fs.copyFile(config.saveFile + ".orig", config.saveFile);
+            await fs.unlink(config.saveFile + ".orig");
+        }
+    };
+
+    if(!(subcommand in subcommands)) {
+        console.log("invalid subcommand - must be either `start`, `commit`, or `undo`");
+        return;
+    }
+
+    await subcommands[subcommand as keyof typeof subcommands]();
+    rl.close();
 };

@@ -1,7 +1,7 @@
 import path from "path";
 import fs from "fs/promises";
 import fsOld from "fs";
-import { SaveFilePublic } from "./save";
+import { SaveFilePublic } from "./saveFmt";
 
 const configPath = process.env.GHCMS_CONFIG ?? "./ghcms.config.mjs";
 

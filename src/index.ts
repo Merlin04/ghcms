@@ -2,9 +2,10 @@ import index from "./index.html";
 import { Octokit } from "@octokit/rest";
 import { writeFile } from "fs/promises";
 import config from "./config";
-import save, { SaveFilePublic, type SaveFile } from "./save";
+import save from "./save";
+import type { SaveFilePublic, SaveFile } from "./saveFmt";
 import serve, { ContentType, content, body } from "./web";
-import { runCli } from "./delta";
+import { checkIfEditing, runCli, runEdit } from "./delta";
 
 export type { ConfigObj, ConfigFn } from "./config";
 
@@ -64,77 +65,85 @@ const updateSave = (
     ];
 };
 
+if(process.argv[2] === "edit") {
+    await runEdit();
+    process.exit(0);
+}
+await checkIfEditing();
+
 if(process.argv[2] === "history") {
     await runCli();
     process.exit(0);
-} else {
-    serve([
-        {
-            path: "/api/refreshgh",
-            handler: async (req, res) => {
-                const repos = await getRepos();
-                const newSave = updateSave(save.value, repos);
-                save.value = newSave;
-                // redirect to /
-                res.writeHead(302, { Location: "/" });
-                res.end();
-            }
-        },
-        {
-            path: "/",
-            handler: (req, res) => {
-                content(
-                    res,
-                    ContentType.HTML,
-                    index
-                        .replace("{DATA}", JSON.stringify(save.value))
-                        .replace("{CUSTOM_FIELDS}", JSON.stringify(config.customFields))
-                );
-            }
-        },
-        {
-            path: "/api/save",
-            handler: (req, res) => {
-                content(res, ContentType.JSON, JSON.stringify(save.value));
-            }
-        },
-        {
-            path: "/api/update",
-            handler: async (req, res) => {
-                // replace save with value in request body
-                const b = await body(req);
-                const newSave = JSON.parse(b);
-                save.value = newSave;
-                // success
-                content(res, ContentType.TEXT, "OK");
-            }
-        },
-        {
-            path: "/api/generate",
-            handler: async (req, res) => {
-                // generate the file
-                const v = await config.default(
-                    Array.from({ length: save.value.length }, (_, i) => {
-                        let r: SaveFile[number] | undefined = save.value.find((v) => v.order === i);
-                        if (!r)
-                            throw new Error(
-                                "Invalid order in save file! This should never happen."
-                            );
-                        // replace custom field keys c_key with key
-                        r = { ...r };
-                        for (const f of config.customFields) {
-                            //@ts-expect-error
-                            r[f.key.slice(2)] = r[f.key];
-                            delete r[f.key];
-                        }
-                        return r as SaveFilePublic[number];
-                    })
-                );
-                await writeFile(config.output, v);
-                // success
-                console.log("Generated output file!");
-                content(res, ContentType.TEXT, "OK");
-            }
-        }
-    ]);    
 }
+const port = await serve([
+    {
+        path: "/api/refreshgh",
+        handler: async (req, res) => {
+            const repos = await getRepos();
+            const newSave = updateSave(save.value, repos);
+            save.value = newSave;
+            // redirect to /
+            res.writeHead(302, { Location: "/" });
+            res.end();
+        }
+    },
+    {
+        path: "/",
+        handler: (req, res) => {
+            content(
+                res,
+                ContentType.HTML,
+                index
+                    .replace("{DATA}", JSON.stringify(save.value))
+                    .replace("{CUSTOM_FIELDS}", JSON.stringify(config.customFields))
+            );
+        }
+    },
+    {
+        path: "/api/save",
+        handler: (req, res) => {
+            content(res, ContentType.JSON, JSON.stringify(save.value));
+        }
+    },
+    {
+        path: "/api/update",
+        handler: async (req, res) => {
+            // replace save with value in request body
+            const b = await body(req);
+            const newSave = JSON.parse(b);
+            save.value = newSave;
+            // success
+            content(res, ContentType.TEXT, "OK");
+        }
+    },
+    {
+        path: "/api/generate",
+        handler: async (req, res) => {
+            // generate the file
+            const v = await config.default(
+                Array.from({ length: save.value.length }, (_, i) => {
+                    let r: SaveFile[number] | undefined = save.value.find((v) => v.order === i);
+                    if (!r)
+                        throw new Error(
+                            "Invalid order in save file! This should never happen."
+                        );
+                    // replace custom field keys c_key with key
+                    r = { ...r };
+                    for (const f of config.customFields) {
+                        //@ts-expect-error
+                        r[f.key.slice(2)] = r[f.key];
+                        delete r[f.key];
+                    }
+                    return r as SaveFilePublic[number];
+                })
+            );
+            await writeFile(config.output, v);
+            // success
+            console.log("Generated output file!");
+            content(res, ContentType.TEXT, "OK");
+        }
+    }
+]);
+
+console.log(`Server listening on port ${port}`);
+console.log(`💡 reminder! ghcms stores revision history - run \`ghcms history\` for more`);
