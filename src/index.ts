@@ -54,7 +54,7 @@ const updateSave = (
         ...save.map((s, i) => ({
             ...s,
             order: i + newRepos.length,
-            description:
+            summary:
                 repos.find((r) => r.full_name === s.repo)?.description ?? "",
             ...Object.fromEntries(config.customFields.map((f) => ([
                 f.key, s[f.key] === undefined ? f.default : s[f.key]
