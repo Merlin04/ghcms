@@ -1,6 +1,6 @@
 {
   "name": "@merlin04/ghcms",
-  "version": "0.3.0",
+  "version": "0.3.1",
   "license": "MIT",
   "author": "Merlin04",
   "main": "dist/index.mjs",
@@ -53,13 +53,12 @@
     "rollup": "^3.21.7",
     "rollup-plugin-copy": "^3.4.0",
     "rollup-plugin-dts": "^5.3.0",
-    "rollup-plugin-natives": "^0.7.6",
     "rollup-plugin-string": "^3.0.0",
     "tslib": "^2.5.0",
     "typescript": "^5.0.4"
   },
   "dependencies": {
     "@octokit/rest": "^19.0.8",
-    "xdelta-async-nodejs-addon": "^1.0.2"
+    "xdelta3-wasm": "^1.0.0"
   }
 }

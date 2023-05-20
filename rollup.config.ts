@@ -6,7 +6,6 @@ import commonjs from "@rollup/plugin-commonjs";
 import json from "@rollup/plugin-json";
 import terser from "@rollup/plugin-terser";
 import dts from "rollup-plugin-dts";
-import nativePlugin from "rollup-plugin-natives";
 import copy from "rollup-plugin-copy";
 
 const dev = process.env.ROLLUP_WATCH === "true";
@@ -24,39 +23,26 @@ export default [{
         banner: `#!/usr/bin/env node
 import { fileURLToPath } from "url";
 import { dirname } from "path";
-import { createRequire } from "module";
 const __filename = fileURLToPath(import.meta.url);
 const __dirname = dirname(__filename);
-const require = createRequire(import.meta.url);
 
 `
     },
     plugins: [
-        nativePlugin({
-            copyTo: "dist/build", // hacky
-            destDir: ".",
-            dlopen: false,
-            sourcemap: dev,
-            targetEsm: true // doesn't do anything ????
-        }),
         typescript(),
         string({
             include: "**/*.html"
         }),
         json(),
         nodeResolve(),
-        commonjs({
-            ignoreDynamicRequires: true // janky native module
-        }),
+        commonjs(),
         copy({
             targets: [
-                { src: "package.json", dest: "dist" } // wow another stupid native module hack
+                { src: "./node_modules/xdelta3-wasm/dist/*.wasm", dest: "dist" }
             ]
         }),
         dev && run(),
-        !dev && terser({
-            compress: false // for some reason, with the janky native module thing having this on breaks it
-        })
+        !dev && terser()
     ]
 }, ...(!dev ? [{
     input: "src/index.ts",
