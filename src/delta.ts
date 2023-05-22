@@ -38,9 +38,7 @@ const textDecoder = new TextDecoder();
 await init();
 
 const encodeString = (str: string) => {
-    const arr = new Uint8Array(str.length);
-    textEncoder.encodeInto(str, arr);
-    return arr;
+    return textEncoder.encode(str);
 };
 
 let _deltasFile: ArrayBuffer = null!;
@@ -74,10 +72,6 @@ export const appendDelta = async (old: string | Uint8Array, latest: string | Uin
     if (typeof latest === "string") {
         latest = encodeString(latest);
     }
-
-    // const delta = await xdelta.generateDeltaAsync(latest, old, old.length - 4 /* unpacked size uint32 */, BlockMatchSpeed.Default)
-    //    .then((delta) => ({ isDelta: true, buf: delta }))
-    //    .catch(() => ({ isDelta: false, buf: old as Buffer /* typescript moment */ }));
 
     const { output, ret, str: errorCode } = xd3_encode_memory(old, latest, old.length - 4 /* unpacked size uint32 */, xd3_smatch_cfg.DEFAULT);
     const isDelta = ret !== WASI_ERRNO.ENOSPC;
